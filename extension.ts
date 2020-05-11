@@ -1,6 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { window, workspace, commands, Disposable, ExtensionContext, StatusBarAlignment, StatusBarItem, TextDocument } from 'vscode';
+import { window, workspace, commands, Disposable, ExtensionContext, StatusBarAlignment, StatusBarItem, TextDocument, Selection, TextEditorSelectionChangeEvent, Range } from 'vscode';
 
 // this method is called when your extension is activated. activation is
 // controlled by the activation events defined in package.json
@@ -24,7 +24,7 @@ export class WordCounter {
 
 	private _statusBarItem: StatusBarItem;
 
-	public updateWordCount() {
+	public updateWordCount(selections?: Selection[]) {
 
 		// Create as needed
 		if (!this._statusBarItem) {
@@ -42,7 +42,13 @@ export class WordCounter {
 
 		// Only update status if an MD file
 		if (doc.languageId === "markdown") {
-			let wordCount = this._getWordCount(doc);
+			let wordCount;
+			if (selections !== null && selections !== undefined && selections.length > 0) {
+				wordCount = this._getWordCountForSelections(doc, selections);
+			}
+			else {
+				wordCount = this._getWordCountForDoc(doc);
+			}
 
 			// Update the status bar
 			this._statusBarItem.text = wordCount !== 1 ? `$(pencil) ${wordCount} Words` : '$(pencil) 1 Word';
@@ -52,15 +58,25 @@ export class WordCounter {
 		}
 	}
 
-	public _getWordCount(doc: TextDocument): number {
-		let docContent = doc.getText();
+	public _getWordCountForDoc(doc: TextDocument): number {
+		return this.countWords(doc.getText());
+	}
 
+	public _getWordCountForSelections(doc: TextDocument, selections: Selection[]): number {
+		return selections.map(s => {
+			const text = doc.getText(new Range(s.start, s.end));
+			return this.countWords(text);
+		}).reduce((acc, n) => acc + n);
+	}
+
+	private countWords(text: string): number {
 		// Parse out unwanted whitespace so the split is accurate
-		docContent = docContent.replace(/(< ([^>]+)<)/g, '').replace(/\s+/g, ' ');
-		docContent = docContent.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+		text = text.replace(/(< ([^>]+)<)/g, '').replace(/\s+/g, ' ');
+		text = text.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+
 		let wordCount = 0;
-		if (docContent != "") {
-			wordCount = docContent.split(" ").length;
+		if (text != "") {
+			wordCount = text.split(" ").length;
 		}
 
 		return wordCount;
@@ -82,7 +98,7 @@ class WordCounterController {
 
 		// subscribe to selection change and editor activation events
 		let subscriptions: Disposable[] = [];
-		window.onDidChangeTextEditorSelection(this._onEvent, this, subscriptions);
+		window.onDidChangeTextEditorSelection(this._onSelectionEvent, this, subscriptions);
 		window.onDidChangeActiveTextEditor(this._onEvent, this, subscriptions);
 
 		// create a combined disposable from both event subscriptions
@@ -91,6 +107,16 @@ class WordCounterController {
 
 	private _onEvent() {
 		this._wordCounter.updateWordCount();
+	}
+
+	private _onSelectionEvent(e: TextEditorSelectionChangeEvent) {
+		// If all selections are empty, count the whole document
+		if (e.selections.every(s => s.isEmpty)) {
+			this._wordCounter.updateWordCount();
+		}
+		else {
+			this._wordCounter.updateWordCount(e.selections);
+		}
 	}
 
 	public dispose() {
