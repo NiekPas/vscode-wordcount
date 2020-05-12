@@ -43,15 +43,26 @@ export class WordCounter {
 		// Only update status if an MD file
 		if (doc.languageId === "markdown") {
 			let wordCount;
+			let statusBarItemText;
 			if (selections !== null && selections !== undefined && selections.length > 0) {
-				wordCount = this._getWordCountForSelections(doc, selections);
+				const wordCount = this._getWordCountForSelections(doc, selections);
+				const docWordCount = this._getWordCountForDoc(doc);
+				statusBarItemText =
+					docWordCount !== 1
+						? `$(pencil) ${wordCount} of ${docWordCount} Words`
+						: `$(pencil) ${wordCount} of ${docWordCount} Word`
 			}
+
 			else {
-				wordCount = this._getWordCountForDoc(doc);
+				const wordCount = this._getWordCountForDoc(doc);
+				statusBarItemText =
+					wordCount !== 1
+						? `$(pencil) ${wordCount} Words`
+						: '$(pencil) 1 Word';
 			}
 
 			// Update the status bar
-			this._statusBarItem.text = wordCount !== 1 ? `$(pencil) ${wordCount} Words` : '$(pencil) 1 Word';
+			this._statusBarItem.text = statusBarItemText;
 			this._statusBarItem.show();
 		} else {
 			this._statusBarItem.hide();
