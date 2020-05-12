@@ -1,6 +1,6 @@
 # VSCode - WordCount README
  
-This is a fork of [microsoft/vscode-wordcount](https://github.com/microsoft/vscode-wordcount) that adds support for text selection word count.
+This is a fork of [microsoft/vscode-wordcount](https://github.com/microsoft/vscode-wordcount) that supports counting the words in your current selection.
 
 ## Functionality
 
